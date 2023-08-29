@@ -1,0 +1,18 @@
+{
+  "name": "auth",
+  "version": "1.0.0",
+  "description": "认证服务演示",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "gangz",
+  "license": "LGPL",
+  "dependencies": {
+    "axios": "^1.5.0",
+    "body-parser": "^1.20.2",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  }
+}
