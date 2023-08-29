@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const APP_ID = process.env.APP_ID;
 const APP_SECRET = process.env.APP_SECRET;
+const PORT = process.env.PORT || 8848;
 
 // 使用body-parser来解析post请求的body
 app.use(bodyParser.json());
@@ -40,6 +41,6 @@ function generateToken(openid) {
   return `token_${openid}`;
 }
 
-app.listen(8848, () => {
-  console.log('Server started on http://localhost:8848');
+app.listen(PORT, () => {
+  console.log(`Server started on http://localhost:${PORT}`);
 });
