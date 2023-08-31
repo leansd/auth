@@ -16,7 +16,7 @@ async function handleLoginRequest(req, res) {
   try {
       const { openid } = await getSessionInfoFromWeixin(code);
       logger.info(`login successful with openid: ${openid}`);
-      const token = generateToken(openid); 
+      const token = await generateToken(openid); 
       // 返回token给小程序端
       res.json({ token });
   } catch (error) {
@@ -24,9 +24,8 @@ async function handleLoginRequest(req, res) {
       res.status(500).send('登录失败');
   }
 }
-function generateToken(openid) {
-  const authResult = keycloakAuth(openid);
-  console.log(authResult);
+async function generateToken(openid) {
+  const authResult = await keycloakAuth(openid);
   return authResult.access_token;
 }
 
