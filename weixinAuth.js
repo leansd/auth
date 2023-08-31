@@ -1,6 +1,6 @@
 const axios = require('axios');
-
-async function getSessionInfoFromWeixin(APP_ID, APP_SECRET, code) {
+const { APP_ID, APP_SECRET } = require('./config');
+async function getSessionInfoFromWeixin(code) {
     try {
         const response = await axios.get(`https://api.weixin.qq.com/sns/jscode2session?appid=${APP_ID}&secret=${APP_SECRET}&js_code=${code}&grant_type=authorization_code`);
 
