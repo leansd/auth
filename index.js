@@ -26,6 +26,7 @@ async function handleLoginRequest(req, res) {
 }
 function generateToken(openid) {
   const authResult = keycloakAuth(openid);
+  console.log(authResult);
   return authResult.access_token;
 }
 
