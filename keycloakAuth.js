@@ -12,6 +12,10 @@ const { KEYCLOAK_ADMIN_CLIENT_ID,
 const keycloakConfig = {
     baseUrl: KEYCLOAK_BASE_URL,
     realmName: KEYCLOAK_REALM_NAME,
+    username: KEYCLOAK_ADMIN_USERNAME,
+    password: KEYCLOAK_ADMIN_PASSWORD,
+    grantType: 'password',
+    clientId: KEYCLOAK_ADMIN_CLIENT_ID,    
 };
 
 const keycloakAdmin = new KeycloakAdminClient(keycloakConfig);
@@ -24,16 +28,21 @@ async function fetchPublicKey() {
     publicKey = response.data.keys[0].x5c[0];
 }
 
+function getPublicKey(){
+    return publicKey;
+}
+/**
+ * 使用小程序的OpenId从Keycloak获取token
+ * 如果用户不存在，则会新建用户
+*/
 async function keycloakAuth(openid) {
-
     // 使用openid检查用户是否存在
     await keycloakAdmin.auth({
         username: KEYCLOAK_ADMIN_USERNAME,
         password: KEYCLOAK_ADMIN_PASSWORD,
         grantType: 'password',
-        clientId: KEYCLOAK_ADMIN_CLIENT_ID,
+        clientId: KEYCLOAK_ADMIN_CLIENT_ID, 
     });
-
     let users = await keycloakAdmin.users.find({ search: openid });
     if (users.length === 0) {
         // 创建新用户
@@ -78,9 +87,29 @@ async function keycloakRefreshToken(refreshToken) {
     return keycloakResponse.data;
 }
 
+async function keycloakUpdateUserInfo(userId, data){
+    const { name, phone, gender } = data;
+    const profileData = {
+        firstName: name, 
+        attributes: {
+            phone: [phone],
+            gender: [gender]
+        }
+    };
+
+    await keycloakAdmin.auth({
+        username: KEYCLOAK_ADMIN_USERNAME,
+        password: KEYCLOAK_ADMIN_PASSWORD,
+        grantType: 'password',
+        clientId: KEYCLOAK_ADMIN_CLIENT_ID, 
+    });
+    await keycloakAdmin.users.update({id: userId, realm: KEYCLOAK_REALM_NAME}, profileData);
+}
+
 module.exports = {
     keycloakAuth,
     keycloakRefreshToken,
+    keycloakUpdateUserInfo,
     fetchPublicKey,
-    publicKey
+    getPublicKey
 };

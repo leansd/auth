@@ -2,8 +2,9 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const logger = require('./logger')
 const getSessionInfoFromWeixin = require('./weixinAuth');
-const {keycloakAuth,keycloakRefreshToken,fetchPublicKey,publicKey} = require('./keycloakAuth');
+const {keycloakAuth,keycloakRefreshToken,fetchPublicKey,keycloakUpdateUserInfo} = require('./keycloakAuth');
 const { PORT } = require('./config');
+const jwt = require('jsonwebtoken');
 
 
 const app = express();
@@ -13,7 +14,7 @@ app.use(bodyParser.json());
 /**
  * 增加Token验证
  */
-const WHITELISTED_PATHS = ['/login', '/public-info'];
+const WHITELISTED_PATHS = ['/login', '/public-info','/refresh-token'];
 fetchPublicKey();
 app.use(async (req, res, next) => {
   if (WHITELISTED_PATHS.includes(req.path)) {
@@ -22,17 +23,19 @@ app.use(async (req, res, next) => {
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.info(`Missing or invalid token in request: ${req.path}`);
       return res.status(401).send({ message: 'Missing or invalid token' });
   }
 
   const token = authHeader.split(' ')[1];
 
   try {
-      jwt.verify(token, publicKey, { algorithms: ['RS256'] }); 
+      //jwt.verify(token, getPublicKey(), { algorithms: ['RS256'] }); 
       const payload = jwt.decode(token); 
       req.user = payload; 
       next();
   } catch (err) {
+      logger.error(err);
       return res.status(401).send({ message: 'Invalid token' });
   }
 });
@@ -89,6 +92,27 @@ async function handleRefreshTokenRequest(req, res) {
 }
 
 app.post('/refresh-token', handleRefreshTokenRequest);
+
+
+/**
+ * 更新用户信息
+ * @param {*} req
+ *      - 支持3个数据：name, phone, gender
+ * @param {*} res
+ * */
+async function handleUpdateUserInfoRequest(req, res) {
+  const userId = req.user.sub;
+  try {
+    await keycloakUpdateUserInfo(userId, req.body);
+    res.send({ message: 'Profile updated successfully' });
+  } catch (error) {
+    console.error('Error updating user profile:', error);
+    res.status(500).send({ message: 'Failed to update profile', error: error.message });
+  }
+}
+app.put('/user-info', handleUpdateUserInfoRequest);
+
+
 
 app.listen(PORT, () => {
   console.log(`Server started on http://localhost:${PORT}`);
