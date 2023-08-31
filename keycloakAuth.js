@@ -16,6 +16,13 @@ const keycloakConfig = {
 
 const keycloakAdmin = new KeycloakAdminClient(keycloakConfig);
 
+// 动态从Keycloak获取公钥
+let publicKey;
+async function fetchPublicKey() {
+    const jwksUri = `${KEYCLOAK_BASE_URL}/realms/${KEYCLOAK_REALM_NAME}/protocol/openid-connect/certs`;
+    const response = await axios.get(jwksUri);
+    publicKey = response.data.keys[0].x5c[0];
+}
 
 async function keycloakAuth(openid) {
 
@@ -73,5 +80,7 @@ async function keycloakRefreshToken(refreshToken) {
 
 module.exports = {
     keycloakAuth,
-    keycloakRefreshToken
+    keycloakRefreshToken,
+    fetchPublicKey,
+    publicKey
 };

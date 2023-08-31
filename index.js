@@ -2,12 +2,40 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const logger = require('./logger')
 const getSessionInfoFromWeixin = require('./weixinAuth');
-const {keycloakAuth,keycloakRefreshToken} = require('./keycloakAuth');
+const {keycloakAuth,keycloakRefreshToken,fetchPublicKey,publicKey} = require('./keycloakAuth');
 const { PORT } = require('./config');
 
 
 const app = express();
 app.use(bodyParser.json());
+
+
+/**
+ * 增加Token验证
+ */
+const WHITELISTED_PATHS = ['/login', '/public-info'];
+fetchPublicKey();
+app.use(async (req, res, next) => {
+  if (WHITELISTED_PATHS.includes(req.path)) {
+    return next();
+  }
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).send({ message: 'Missing or invalid token' });
+  }
+
+  const token = authHeader.split(' ')[1];
+
+  try {
+      jwt.verify(token, publicKey, { algorithms: ['RS256'] }); 
+      const payload = jwt.decode(token); 
+      req.user = payload; 
+      next();
+  } catch (err) {
+      return res.status(401).send({ message: 'Invalid token' });
+  }
+});
 
 /**
  * handle Login Request
@@ -39,6 +67,12 @@ async function generateToken(openid) {
 
 app.post('/login', handleLoginRequest);
 
+/**
+ * 刷新token
+ * @param {*} req 
+ * @param {*} res 
+ * @returns 
+ */
 async function handleRefreshTokenRequest(req, res) {
   const refreshToken = req.body.refresh_token;
   if (!refreshToken) {
