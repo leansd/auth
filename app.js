@@ -1,7 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const logger = require('./logger')
-const getSessionInfoFromWeixin = require('./weixinAuth');
+const {getSessionInfoFromWeixin} = require('./weixinAuth');
 const {keycloakAuth,keycloakRefreshToken,fetchPublicKey,keycloakUpdateUserInfo} = require('./keycloakAuth');
 const jwt = require('jsonwebtoken');
 
@@ -46,6 +46,7 @@ app.use(async (req, res, next) => {
  */
 async function handleLoginRequest(req, res) {
   const code = req.body.code;
+  console.log(code);
   logger.info(`login received : ${code}`);
 
   try {

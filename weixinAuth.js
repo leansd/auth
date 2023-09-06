@@ -18,4 +18,4 @@ async function getSessionInfoFromWeixin(code) {
 }
 
 
-module.exports =  getSessionInfoFromWeixin;
+module.exports =  {getSessionInfoFromWeixin};
