@@ -11,6 +11,13 @@ jest.mock('./weixinAuth', () => ({
     getSessionInfoFromWeixin: jest.fn()
 }));
 
+const jwt = require('jsonwebtoken');
+
+jest.mock('jsonwebtoken', () => ({
+    decode: jest.fn(),
+  }));
+
+
 const app = require('./app'); 
 
 describe('白名单中的路径不需要访问令牌，其他路径需要访问令牌', () => {
@@ -25,12 +32,24 @@ describe('白名单中的路径不需要访问令牌，其他路径需要访问�
     });
 
     PROTECTED_PATHS.forEach(path => {
-        it(`没有令牌时访问非白名单路径 ${path} 应该返回401`, async () => {
+        it(`没有令牌时访问非白名单路径 ${path} 返回401`, async () => {
             const response = await request(app).get(path);
             expect(response.status).toBe(401);
         });
 
-        it(`持有令牌时访问非白名单路径 ${path} 不返回401`, async () => {
+        it(`持有非法令牌时访问非白名单路径 ${path} 返回401`, async () => {
+            const mockValidToken = 'Bearer mock-invalid-token';
+            jwt.decode.mockImplementation(() => {
+                throw new Error('Invalid token');
+            }); 
+            const response = await request(app)
+                .get('/user-info')
+                .set('Authorization', mockValidToken);
+            expect(response.status).toBe(401);
+        });
+
+        it(`持有合法令牌时访问非白名单路径 ${path} 不返回401`, async () => {
+            jwt.decode.mockReturnValue({ sub: 'mocked_userid' });
             const mockValidToken = 'Bearer mock-valid-token';
             const response = await request(app)
                 .get('/user-info')
@@ -112,5 +131,43 @@ describe('刷新令牌', () => {
         const response = await request(app).post('/refresh-token').send({ refresh_token: 'valid_token' });
         expect(response.status).toBe(500);
         expect(response.body.error).toBe('Failed to refresh token');
+    });
+});
+
+
+describe('更新用户信息', () => {
+    const userInfo = { name: 'John', phone: '1234567890', gender: 'male' };
+
+    beforeEach(() => {
+        jest.clearAllMocks();
+        jwt.decode.mockReturnValue({ sub: 'mocked_userid' });
+    });
+
+    it('正常场景', async () => {
+        require('./keycloakAuth').keycloakUpdateUserInfo.mockResolvedValue(null);
+        const response = await request(app)
+                    .put('/user-info')
+                    .set('Authorization', "Bearer mocked_token")
+                    .send(userInfo);
+        expect(response.status).toBe(200);
+        expect(response.body.message).toBe('Profile updated successfully');
+    });
+
+    it.skip('如果用户信息无效，则拒绝更新(尚未实现）', async () => {
+        const invalidUserInfo = { name: '', phone: '1234567890', gender: 'alien' }; // 假设这是无效的信息
+        require('./keycloakAuth').keycloakUpdateUserInfo.mockRejectedValue(new Error('Invalid user info'));
+        const response = await request(app).put('/user-info').send(invalidUserInfo);
+        expect(response.status).toBe(500);
+        expect(response.body.message).toBe('Failed to update profile');
+    });
+
+    it('如果服务器错误，则返回500', async () => {
+        require('./keycloakAuth').keycloakUpdateUserInfo.mockRejectedValue(new Error('Server error'));
+        const response = await request(app)
+        .put('/user-info')
+        .set('Authorization', "Bearer mocked_token")
+        .send(userInfo);
+        expect(response.status).toBe(500);
+        expect(response.body.message).toBe('Failed to update profile');
     });
 });
