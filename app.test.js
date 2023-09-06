@@ -81,3 +81,36 @@ describe('使用小程序码登录并换取令牌', () => {
         expect(response.text).toBe('登录失败');
     });
 });
+
+
+describe('刷新令牌', () => {
+    afterEach(() => {
+        jest.clearAllMocks();
+    });
+    it('如果BODY中没有给出刷新令牌，则应该返回400错误', async () => {
+        const response = await request(app).post('/refresh-token').send({});
+        expect(response.status).toBe(400);
+        expect(response.body.error).toBe('Refresh token is required');
+    });
+
+    it('如果刷新令牌有效，则获得新令牌', async () => {
+        require('./keycloakAuth').keycloakRefreshToken.mockResolvedValue({ access_token: 'new_token' });
+        const response = await request(app).post('/refresh-token').send({ refresh_token: 'valid_token' });
+        expect(response.status).toBe(200);
+        expect(response.text).toBe(JSON.stringify({ access_token: 'new_token' }));
+    });
+
+    it('如果刷新令牌无效，返回500错误', async () => {
+        require('./keycloakAuth').keycloakRefreshToken.mockRejectedValue(new Error('Invalid token'));
+        const response = await request(app).post('/refresh-token').send({ refresh_token: 'invalid_token' });
+        expect(response.status).toBe(500);
+        expect(response.body.error).toBe('Failed to refresh token');
+    });
+
+    it('如果keyCloak服务器错误，返回500错误', async () => {
+        require('./keycloakAuth').keycloakRefreshToken.mockRejectedValue(new Error('Server error'));
+        const response = await request(app).post('/refresh-token').send({ refresh_token: 'valid_token' });
+        expect(response.status).toBe(500);
+        expect(response.body.error).toBe('Failed to refresh token');
+    });
+});
