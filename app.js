@@ -9,11 +9,15 @@ const jwt = require('jsonwebtoken');
 const app = express();
 app.use(bodyParser.json());
 
+const url_login = '/auth/v1/login';
+const url_public_info = '/auth/v1/public-info';
+const url_refresh_token = '/auth/v1/refresh-token';
+const url_user_info = '/user/v1/user-info';
 
 /**
  * 增加Token验证
  */
-const WHITELISTED_PATHS = ['/login', '/public-info','/refresh-token'];
+const WHITELISTED_PATHS = [url_login, url_public_info,url_refresh_token];
 fetchPublicKey();
 app.use(async (req, res, next) => {
   if (WHITELISTED_PATHS.includes(req.path)) {
@@ -68,7 +72,7 @@ async function generateToken(openid) {
 
 
 
-app.post('/login', handleLoginRequest);
+app.post(url_login, handleLoginRequest);
 
 /**
  * 刷新token
@@ -91,7 +95,7 @@ async function handleRefreshTokenRequest(req, res) {
   }
 }
 
-app.post('/refresh-token', handleRefreshTokenRequest);
+app.post(url_refresh_token, handleRefreshTokenRequest);
 
 
 /**
@@ -111,6 +115,6 @@ async function handleUpdateUserInfoRequest(req, res) {
   }
 }
 
-app.put('/user-info', handleUpdateUserInfoRequest);
+app.put(url_user_info, handleUpdateUserInfoRequest);
 
-module.exports = app;
+module.exports = {app,url_login,url_public_info,url_refresh_token,url_user_info};

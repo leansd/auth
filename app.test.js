@@ -18,11 +18,17 @@ jest.mock('jsonwebtoken', () => ({
   }));
 
 
-const app = require('./app'); 
+const {app} = require('./app'); 
+
+/* 下面的路径重写而不是从app导入，以提高文档价值和可靠性 */
+const url_login = '/auth/v1/login';
+const url_public_info = '/auth/v1/public-info';
+const url_refresh_token = '/auth/v1/refresh-token';
+const url_user_info = '/user/v1/user-info';
 
 describe('白名单中的路径不需要访问令牌，其他路径需要访问令牌', () => {
-    const WHITELISTED_PATHS = ['/login', '/public-info', '/refresh-token'];
-    const PROTECTED_PATHS = ['/user-info'];
+    const WHITELISTED_PATHS = [url_login, url_public_info, url_refresh_token];
+    const PROTECTED_PATHS = [url_user_info];
     // 测试白名单中的路径
     WHITELISTED_PATHS.forEach(path => {
         it(`可以不使用令牌访问路径 ${path} `, async () => {
@@ -43,7 +49,7 @@ describe('白名单中的路径不需要访问令牌，其他路径需要访问�
                 throw new Error('Invalid token');
             }); 
             const response = await request(app)
-                .get('/user-info')
+                .get(url_user_info)
                 .set('Authorization', mockValidToken);
             expect(response.status).toBe(401);
         });
@@ -52,7 +58,7 @@ describe('白名单中的路径不需要访问令牌，其他路径需要访问�
             jwt.decode.mockReturnValue({ sub: 'mocked_userid' });
             const mockValidToken = 'Bearer mock-valid-token';
             const response = await request(app)
-                .get('/user-info')
+                .get(url_user_info)
                 .set('Authorization', mockValidToken);
             expect(response.status).not.toBe(401);
         });
@@ -71,7 +77,7 @@ describe('使用小程序码登录并换取令牌', () => {
         const mockCode = 'validCode';
         getSessionInfoFromWeixin.mockResolvedValue({ openid: 'mockOpenid' });
         const response = await request(app)
-            .post('/login')
+            .post(url_login)
             .send({ code: mockCode });
         expect(response.status).toBe(200);
     });
@@ -81,7 +87,7 @@ describe('使用小程序码登录并换取令牌', () => {
         require('./weixinAuth').getSessionInfoFromWeixin.mockRejectedValue(new Error('Invalid code'));
 
         const response = await request(app)
-            .post('/login')
+            .post(url_login)
             .send({ code: mockCode });
 
         expect(response.status).toBe(500); 
@@ -93,7 +99,7 @@ describe('使用小程序码登录并换取令牌', () => {
         require('./weixinAuth').getSessionInfoFromWeixin.mockRejectedValue(new Error('Weixin API failure'));
 
         const response = await request(app)
-            .post('/login')
+            .post(url_login)
             .send({ code: mockCode });
 
         expect(response.status).toBe(500); 
@@ -107,28 +113,28 @@ describe('刷新令牌', () => {
         jest.clearAllMocks();
     });
     it('如果BODY中没有给出刷新令牌，则应该返回400错误', async () => {
-        const response = await request(app).post('/refresh-token').send({});
+        const response = await request(app).post(url_refresh_token).send({});
         expect(response.status).toBe(400);
         expect(response.body.error).toBe('Refresh token is required');
     });
 
     it('如果刷新令牌有效，则获得新令牌', async () => {
         require('./keycloakAuth').keycloakRefreshToken.mockResolvedValue({ access_token: 'new_token' });
-        const response = await request(app).post('/refresh-token').send({ refresh_token: 'valid_token' });
+        const response = await request(app).post(url_refresh_token).send({ refresh_token: 'valid_token' });
         expect(response.status).toBe(200);
         expect(response.text).toBe(JSON.stringify({ access_token: 'new_token' }));
     });
 
     it('如果刷新令牌无效，返回500错误', async () => {
         require('./keycloakAuth').keycloakRefreshToken.mockRejectedValue(new Error('Invalid token'));
-        const response = await request(app).post('/refresh-token').send({ refresh_token: 'invalid_token' });
+        const response = await request(app).post(url_refresh_token).send({ refresh_token: 'invalid_token' });
         expect(response.status).toBe(500);
         expect(response.body.error).toBe('Failed to refresh token');
     });
 
     it('如果keyCloak服务器错误，返回500错误', async () => {
         require('./keycloakAuth').keycloakRefreshToken.mockRejectedValue(new Error('Server error'));
-        const response = await request(app).post('/refresh-token').send({ refresh_token: 'valid_token' });
+        const response = await request(app).post(url_refresh_token).send({ refresh_token: 'valid_token' });
         expect(response.status).toBe(500);
         expect(response.body.error).toBe('Failed to refresh token');
     });
@@ -146,7 +152,7 @@ describe('更新用户信息', () => {
     it('正常场景', async () => {
         require('./keycloakAuth').keycloakUpdateUserInfo.mockResolvedValue(null);
         const response = await request(app)
-                    .put('/user-info')
+                    .put(url_user_info)
                     .set('Authorization', "Bearer mocked_token")
                     .send(userInfo);
         expect(response.status).toBe(200);
@@ -156,7 +162,7 @@ describe('更新用户信息', () => {
     it.skip('如果用户信息无效，则拒绝更新(尚未实现）', async () => {
         const invalidUserInfo = { name: '', phone: '1234567890', gender: 'alien' }; // 假设这是无效的信息
         require('./keycloakAuth').keycloakUpdateUserInfo.mockRejectedValue(new Error('Invalid user info'));
-        const response = await request(app).put('/user-info').send(invalidUserInfo);
+        const response = await request(app).put(url_user_info).send(invalidUserInfo);
         expect(response.status).toBe(500);
         expect(response.body.message).toBe('Failed to update profile');
     });
@@ -164,7 +170,7 @@ describe('更新用户信息', () => {
     it('如果服务器错误，则返回500', async () => {
         require('./keycloakAuth').keycloakUpdateUserInfo.mockRejectedValue(new Error('Server error'));
         const response = await request(app)
-        .put('/user-info')
+        .put(url_user_info)
         .set('Authorization', "Bearer mocked_token")
         .send(userInfo);
         expect(response.status).toBe(500);
