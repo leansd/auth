@@ -2,4 +2,5 @@ app.log
 yarn.lock
 .env
 node_modules/**
+test-results/**
 
