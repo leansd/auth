@@ -1,1 +1,1 @@
-docker build . -t leansd/miniapp-auth
+docker build . -t leansd/auth
